@@ -36,7 +36,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
   String formatTimeOfDay(TimeOfDay tod) {
     final now = DateTime.now();
     final dt = DateTime(now.year, now.month, now.day, tod.hour, tod.minute);
-    final format = DateFormat.jm(); // 'jm' will format time as AM/PM
+    final format = DateFormat.jm();
     return format.format(dt);
   }
 
@@ -58,7 +58,6 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
           if (box.values.isEmpty) {
             return Center(child: Text("No Appointments"));
           } else {
-            // Sort the appointments by date and time
             final appointments = box.values.toList()
               ..sort((a, b) {
                 int dateComparison =
@@ -66,7 +65,6 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                 if (dateComparison != 0) {
                   return dateComparison;
                 } else {
-                  // Compare TimeOfDay by converting to total minutes
                   int aTotalMinutes = a.appointmentTimeOfDay.hour * 60 +
                       a.appointmentTimeOfDay.minute;
                   int bTotalMinutes = b.appointmentTimeOfDay.hour * 60 +

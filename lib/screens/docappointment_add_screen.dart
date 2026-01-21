@@ -34,9 +34,8 @@ class _AppointmentAddState extends State<AppointmentAdd> {
   void _saveForm() async {
     if (_formKey.currentState!.validate()) {
       try {
-        print('Save button pressed'); // Debug print
+        print('Save button pressed');
 
-        // Create new appointment entry
         final newAppointment = Appointment(
           doctorName: _doctorNameController.text,
           hospitalName: _hospitalNameController.text,
@@ -44,23 +43,18 @@ class _AppointmentAddState extends State<AppointmentAdd> {
           appointmentTime: '${_selectedTime.hour}:${_selectedTime.minute}',
         );
 
-        // Generate a unique ID for DoctorHistory
-        final id =
-            DateTime.now().millisecondsSinceEpoch.toString(); // Unique ID
+        final id = DateTime.now().millisecondsSinceEpoch.toString();
 
-        // Create new doctor history entry with the ID
         final doctorHistoryEntry = DoctorHistory(
-          id: id, // Include the unique ID
+          id: id,
           doctorName: _doctorNameController.text,
           appointmentDate: _selectedDate,
           hospitalName: _hospitalNameController.text,
         );
 
-        // Get Hive boxes
         final appointmentBox = Hive.box<Appointment>('appointmentBox');
         final historyBox = Hive.box<DoctorHistory>('dochistory');
 
-        // Save appointment and history entries
         await appointmentBox.add(newAppointment);
         await historyBox.add(doctorHistoryEntry);
 
@@ -80,7 +74,7 @@ class _AppointmentAddState extends State<AppointmentAdd> {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime.now(), // Restrict past dates
+      firstDate: DateTime.now(),
       lastDate: DateTime(2101),
     );
     if (pickedDate != null && pickedDate != _selectedDate) {
