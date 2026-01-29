@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:intl/intl.dart';
 import 'package:medicine_try1/ui_colors/green.dart';
 import 'package:medicine_try1/utils/colors_util.dart';
 import 'package:medicine_try1/utils/date_utils.dart' as date_util;
@@ -21,6 +22,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late DateTime currentDateTime;
   late Box<Medicine> medicineBox;
   late List<Medicine> filteredMedicines;
+  late Box<bool> intakeBox;
 
   @override
   void initState() {
@@ -33,6 +35,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // Initialize the medicine box
     medicineBox = Hive.box<Medicine>('medicine-database');
+    intakeBox = Hive.box<bool>('medicine-intake');
     filterMedicines(currentDateTime); // Pass the current date
   }
 
@@ -45,6 +48,77 @@ class _MyHomePageState extends State<MyHomePage> {
           selectedDate.isAtSameMomentAs(startDate) ||
           selectedDate.isAtSameMomentAs(endDate);
     }).toList();
+  }
+
+// Create a key for medicine+date
+  String intakeKey(Medicine medicine) {
+    return '${medicine.id}_${DateFormat('yyyy-MM-dd').format(currentDateTime)}';
+  }
+
+// Check if medicine is taken for the selected date
+  bool isTakenToday(Medicine medicine) {
+    return intakeBox.get(intakeKey(medicine), defaultValue: false)!;
+  }
+
+  Future<void> markMedicineTaken(Medicine medicine) async {
+    if (isTakenToday(medicine)) return; // already taken
+
+    final stock = int.tryParse(medicine.currentstock) ?? 0;
+    if (stock <= 0) return;
+
+    final updated = Medicine(
+      id: medicine.id,
+      medicineName: medicine.medicineName,
+      medicineUnit: medicine.medicineUnit,
+      frequency: medicine.frequency,
+      selectedDate: medicine.selectedDate,
+      selectedDay: medicine.selectedDay,
+      endDate: medicine.endDate,
+      whenm: medicine.whenm,
+      dosage: medicine.dosage,
+      notifications: medicine.notifications,
+      startdate: medicine.startdate,
+      enddate: medicine.enddate,
+      currentstock: (stock - 1).toString(), // decrease stock
+      destock: medicine.destock,
+    );
+
+    await medicineBox.put(medicine.id, updated);
+    await intakeBox.put(intakeKey(medicine), true); // mark taken
+
+    setState(() {
+      filterMedicines(currentDateTime);
+    });
+  }
+
+  Future<void> undoMedicineTaken(Medicine medicine) async {
+    if (!isTakenToday(medicine)) return;
+
+    final stock = int.tryParse(medicine.currentstock) ?? 0;
+
+    final updated = Medicine(
+      id: medicine.id,
+      medicineName: medicine.medicineName,
+      medicineUnit: medicine.medicineUnit,
+      frequency: medicine.frequency,
+      selectedDate: medicine.selectedDate,
+      selectedDay: medicine.selectedDay,
+      endDate: medicine.endDate,
+      whenm: medicine.whenm,
+      dosage: medicine.dosage,
+      notifications: medicine.notifications,
+      startdate: medicine.startdate,
+      enddate: medicine.enddate,
+      currentstock: (stock + 1).toString(), // restore stock
+      destock: medicine.destock,
+    );
+
+    await medicineBox.put(medicine.id, updated);
+    await intakeBox.put(intakeKey(medicine), false); // mark not taken
+
+    setState(() {
+      filterMedicines(currentDateTime);
+    });
   }
 
   @override
@@ -259,70 +333,136 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget medicineDetailsView(Medicine medicine) {
+    final int stock = int.tryParse(medicine.currentstock) ?? 0;
+    final bool taken = isTakenToday(medicine);
+    final bool outOfStock = stock == 0;
+
     return Container(
       width: double.infinity,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
         border: Border.all(
           width: 2,
           color: greencolor,
         ),
+        boxShadow: const [
+          BoxShadow(
+            offset: Offset(2, 2),
+            blurRadius: 4,
+            color: Colors.black12,
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.timer,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top info row
+          Row(
+            children: [
+              Icon(Icons.timer, color: greencolor, size: 36),
+              const SizedBox(width: 10),
+              Text(
+                '${medicine.notifications} / ${medicine.whenm}',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                   color: greencolor,
-                  size: 40,
                 ),
-                Text(
-                  '${medicine.notifications} / ${medicine.whenm}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: greencolor,
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+
+          // Main row: check button + medicine info
+          Row(
+            children: [
+              // Check / out of stock button
+              GestureDetector(
+                onTap: outOfStock
+                    ? null
+                    : () {
+                        taken
+                            ? undoMedicineTaken(medicine)
+                            : markMedicineTaken(medicine);
+                      },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: outOfStock
+                        ? Colors.grey.withOpacity(0.2)
+                        : taken
+                            ? greencolor.withOpacity(0.2)
+                            : Colors.grey.withOpacity(0.1),
+                    border: Border.all(
+                      color: outOfStock
+                          ? Colors.grey
+                          : taken
+                              ? greencolor
+                              : Colors.grey.shade400,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Text(
+                    outOfStock
+                        ? "Out of stock"
+                        : taken
+                            ? "Taken"
+                            : "Mark",
+                    style: TextStyle(
+                      color: outOfStock
+                          ? Colors.grey
+                          : taken
+                              ? greencolor
+                              : Colors.grey.shade600,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 15),
-            Row(
-              children: [
-                Column(
-                  children: [
-                    TextButton(
-                      onPressed: () {},
-                      child: Container(
-                        child: Icon(Icons.check),
-                      ),
+              ),
+
+              const SizedBox(width: 20),
+
+              // Medicine info
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    medicine.medicineName,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: greencolor,
                     ),
-                  ],
-                ),
-                Column(
-                  children: [
-                    Text(
-                      '${medicine.medicineName}',
-                      style: TextStyle(
-                          fontSize: 20,
-                          color: greencolor,
-                          fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Qty: ${medicine.dosage} ${medicine.medicineUnit}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
-                    Text(
-                      'Qty. ${medicine.dosage} ${medicine.medicineUnit}',
-                      style:
-                          TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Stock: $stock',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: outOfStock ? Colors.redAccent : Colors.grey[700],
                     ),
-                  ],
-                )
-              ],
-            )
-          ],
-        ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

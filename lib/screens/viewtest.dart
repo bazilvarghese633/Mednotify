@@ -3,60 +3,76 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:hive/hive.dart';
 import 'package:medicine_try1/model/testappointment.dart';
+import 'package:medicine_try1/screens/add_test.dart';
+import '../ui_colors/green.dart';
 
 class ViewTestAppointmentScreen extends StatelessWidget {
   final TestAppointment testAppointment;
-  final int appointmentIndex;
+
+  // ✅ key instead of index
+  final dynamic appointmentKey;
 
   const ViewTestAppointmentScreen({
     super.key,
     required this.testAppointment,
-    required this.appointmentIndex,
+    required this.appointmentKey,
   });
 
   @override
   Widget build(BuildContext context) {
+    final dateText = DateFormat('dd-MM-yyyy').format(testAppointment.date);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 227, 226, 226),
-        title: Center(
+        title: const Center(
           child: Text(
             'View Test Appointment',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
         actions: [
+          // ✅ EDIT
           IconButton(
-            icon: Icon(Icons.edit),
-            onPressed: () {
-              Navigator.push(
+            icon: const Icon(Icons.edit, color: greencolor),
+            onPressed: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => EditTestAppointmentScreen(
-                    testAppointment: testAppointment,
-                    appointmentIndex: appointmentIndex,
+                  builder: (context) => TestAppointmentAdd(
+                    onSave: (val) {},
+                    appointment: testAppointment,
+                    appointmentKey: appointmentKey, // ✅ REQUIRED FIX
                   ),
                 ),
               );
+
+              // after edit -> go back
+              Navigator.pop(context);
             },
           ),
+
+          // ✅ DELETE
           IconButton(
-            icon: Icon(Icons.delete),
+            icon: const Icon(Icons.delete, color: Colors.red),
             onPressed: () async {
               final confirmDelete = await showDialog<bool>(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: Text('Confirm Delete'),
-                  content:
-                      Text('Are you sure you want to delete this appointment?'),
+                  title: const Text('Confirm Delete'),
+                  content: const Text(
+                      'Are you sure you want to delete this appointment?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
-                      child: Text('Cancel'),
+                      child: const Text('Cancel'),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: Text('Delete'),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ),
                   ],
                 ),
@@ -64,55 +80,93 @@ class ViewTestAppointmentScreen extends StatelessWidget {
 
               if (confirmDelete == true) {
                 final box = Hive.box<TestAppointment>('testAppointmentsBox');
-                await box.deleteAt(appointmentIndex);
-                Navigator.pop(context); // Go back to previous screen
+
+                // ✅ Delete using KEY
+                await box.delete(appointmentKey);
+
+                Navigator.pop(context);
               }
             },
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Test Name: ${testAppointment.testName}',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(width: 2, color: greencolor),
+                color: Colors.white,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    testAppointment.testName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _infoRow(
+                    icon: Icons.local_hospital,
+                    title: "Lab",
+                    value: testAppointment.laboratoryName,
+                  ),
+                  const SizedBox(height: 8),
+                  _infoRow(
+                    icon: Icons.calendar_month,
+                    title: "Date",
+                    value: dateText,
+                  ),
+                  const SizedBox(height: 8),
+                  _infoRow(
+                    icon: Icons.access_time,
+                    title: "Time",
+                    value: testAppointment.time.format(context),
+                  ),
+                ],
+              ),
             ),
-            SizedBox(height: 10),
-            Text(
-              'Laboratory Name: ${testAppointment.laboratoryName}',
-              style: TextStyle(fontSize: 18),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Date: ${DateFormat('yyyy-MM-dd').format(testAppointment.date)}',
-              style: TextStyle(fontSize: 18),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Time: ${testAppointment.time.format(context)}',
-              style: TextStyle(fontSize: 18),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Images:',
+            const SizedBox(height: 16),
+            const Text(
+              "Images",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 10),
-            Expanded(
-              child: ListView.builder(
+            const SizedBox(height: 10),
+            if (testAppointment.images.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(width: 1, color: Colors.grey.shade300),
+                ),
+                child: const Text(
+                  "No images added",
+                  style: TextStyle(fontSize: 16),
+                ),
+              )
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
                 itemCount: testAppointment.images.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
                 itemBuilder: (context, index) {
                   final imagePath = testAppointment.images[index];
-                  return ListTile(
-                    leading: Image.file(
-                      File(imagePath),
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.cover,
-                    ),
+
+                  return GestureDetector(
                     onTap: () {
                       Navigator.push(
                         context,
@@ -122,13 +176,52 @@ class ViewTestAppointmentScreen extends StatelessWidget {
                         ),
                       );
                     },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.file(
+                        File(imagePath),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.broken_image, size: 30),
+                          );
+                        },
+                      ),
+                    ),
                   );
                 },
               ),
-            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _infoRow({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: greencolor),
+        const SizedBox(width: 10),
+        Text(
+          "$title: ",
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 16),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -142,36 +235,18 @@ class ImageViewer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Image Viewer'),
+        backgroundColor: const Color.fromARGB(255, 227, 226, 226),
+        title: const Text('Image Viewer'),
       ),
       body: Center(
-        child: Image.file(File(imagePath)),
-      ),
-    );
-  }
-}
-
-class EditTestAppointmentScreen extends StatelessWidget {
-  final TestAppointment testAppointment;
-  final int appointmentIndex;
-
-  const EditTestAppointmentScreen({
-    super.key,
-    required this.testAppointment,
-    required this.appointmentIndex,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Your implementation for editing the test appointment
-    // This will typically include a form to edit the appointment details
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Edit Test Appointment'),
-      ),
-      body: Center(
-        child: Text('Edit Test Appointment Screen'),
+        child: InteractiveViewer(
+          child: Image.file(
+            File(imagePath),
+            errorBuilder: (context, error, stackTrace) {
+              return const Text("Image not found");
+            },
+          ),
+        ),
       ),
     );
   }

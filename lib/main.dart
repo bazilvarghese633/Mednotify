@@ -4,11 +4,11 @@ import 'package:medicine_try1/local_notifications.dart';
 import 'package:medicine_try1/model/dochistory.dart';
 import 'package:medicine_try1/model/test_history.dart';
 import 'package:medicine_try1/model/testappointment.dart';
-
 import 'package:path_provider/path_provider.dart';
 import 'package:medicine_try1/screens/welcome_screen.dart';
 import 'package:medicine_try1/model/medicine_model.dart';
 import 'package:medicine_try1/model/appointment_model.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,8 +28,12 @@ void main() async {
   await Hive.openBox<TestAppointment>('testAppointmentsBox');
   await Hive.openBox<DoctorHistory>('dochistory');
   await Hive.openBox<TestHistory>('testhistory');
+  await Hive.openBox<bool>('medicine-intake');
 
-  await LocalNotifications.init();
+  tz.initializeTimeZones();
+
+  // Initialize notification service
+  await LocalNotificationService().init();
 
   runApp(const MyApp());
 }

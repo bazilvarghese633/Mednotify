@@ -10,8 +10,10 @@ import 'package:medicine_try1/widgets/title_position.dart';
 
 class AppointmentAdd extends StatefulWidget {
   final Function(Appointment) onSave;
+  final Appointment? appointment;
+  final int? index;
 
-  AppointmentAdd({required this.onSave});
+  AppointmentAdd({required this.onSave, this.appointment, this.index});
 
   @override
   _AppointmentAddState createState() => _AppointmentAddState();
@@ -27,46 +29,43 @@ class _AppointmentAddState extends State<AppointmentAdd> {
   @override
   void initState() {
     super.initState();
-    _selectedDate = DateTime.now();
-    _selectedTime = TimeOfDay.now();
+
+    if (widget.appointment != null) {
+      _doctorNameController.text = widget.appointment!.doctorName;
+      _hospitalNameController.text = widget.appointment!.hospitalName;
+      _selectedDate = widget.appointment!.appointmentDate;
+      final timeParts = widget.appointment!.appointmentTime.split(':');
+      _selectedTime = TimeOfDay(
+        hour: int.parse(timeParts[0]),
+        minute: int.parse(timeParts[1]),
+      );
+    } else {
+      _selectedDate = DateTime.now();
+      _selectedTime = TimeOfDay.now();
+    }
   }
 
   void _saveForm() async {
     if (_formKey.currentState!.validate()) {
-      try {
-        print('Save button pressed');
+      final appointmentBox = Hive.box<Appointment>('appointmentBox');
 
-        final newAppointment = Appointment(
-          doctorName: _doctorNameController.text,
-          hospitalName: _hospitalNameController.text,
-          appointmentDate: _selectedDate,
-          appointmentTime: '${_selectedTime.hour}:${_selectedTime.minute}',
-        );
+      final newAppointment = Appointment(
+        doctorName: _doctorNameController.text,
+        hospitalName: _hospitalNameController.text,
+        appointmentDate: _selectedDate,
+        appointmentTime: '${_selectedTime.hour}:${_selectedTime.minute}',
+      );
 
-        final id = DateTime.now().millisecondsSinceEpoch.toString();
-
-        final doctorHistoryEntry = DoctorHistory(
-          id: id,
-          doctorName: _doctorNameController.text,
-          appointmentDate: _selectedDate,
-          hospitalName: _hospitalNameController.text,
-        );
-
-        final appointmentBox = Hive.box<Appointment>('appointmentBox');
-        final historyBox = Hive.box<DoctorHistory>('dochistory');
-
+      if (widget.index != null) {
+        // Editing existing appointment
+        await appointmentBox.putAt(widget.index!, newAppointment);
+      } else {
+        // Adding new appointment
         await appointmentBox.add(newAppointment);
-        await historyBox.add(doctorHistoryEntry);
-
-        widget.onSave(newAppointment);
-
-        Navigator.of(context).pop(newAppointment);
-      } catch (e) {
-        print("Error saving appointment and history: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error saving data: $e")),
-        );
       }
+
+      widget.onSave(newAppointment);
+      Navigator.of(context).pop(newAppointment);
     }
   }
 

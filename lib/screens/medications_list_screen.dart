@@ -129,13 +129,28 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
                                 fontSize: 15, fontWeight: FontWeight.bold)),
                       ],
                     ),
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red),
-                      onPressed: () async {
-                        if (medicine.id != null) {
-                          await _deleteMedication(medicine.id!);
-                        }
-                      },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min, // Important
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            if (medicine.id != null)
+                              await _deleteMedication(medicine.id!);
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      AddMedicine(medicine: medicine)),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 ),

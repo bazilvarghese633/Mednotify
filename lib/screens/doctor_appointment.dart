@@ -106,36 +106,52 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                           color: docColor,
                           size: 40,
                         ),
-                        trailing: IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: Text("Confirm"),
-                                  content: Text(
-                                    "Are you sure you want to delete this appointment?",
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => AppointmentAdd(
+                                      onSave: (updatedAppointment) {
+                                        setState(() {});
+                                      },
+                                      appointment: appointment,
+                                      index: index,
+                                    ),
                                   ),
-                                  actions: <Widget>[
-                                    TextButton(
-                                      child: Text("CANCEL"),
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                      },
-                                    ),
-                                    TextButton(
-                                      child: Text("DELETE"),
-                                      onPressed: () {
-                                        _deleteAppointment(index);
-                                        Navigator.of(context).pop();
-                                      },
-                                    ),
-                                  ],
                                 );
                               },
-                            );
-                          },
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text("Confirm"),
+                                    content: Text(
+                                        "Are you sure you want to delete this appointment?"),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(),
+                                          child: Text("CANCEL")),
+                                      TextButton(
+                                          onPressed: () {
+                                            _deleteAppointment(index);
+                                            Navigator.of(context).pop();
+                                          },
+                                          child: Text("DELETE")),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ),
                     ),

@@ -10,8 +10,17 @@ import 'package:medicine_try1/widgets/title_position.dart';
 
 class TestAppointmentAdd extends StatefulWidget {
   final void Function(TestAppointment testAppointment) onSave;
+  final TestAppointment? appointment;
 
-  const TestAppointmentAdd({super.key, required this.onSave});
+  // 🔥 KEY is optional (null = add, not null = edit)
+  final dynamic appointmentKey;
+
+  const TestAppointmentAdd({
+    super.key,
+    required this.onSave,
+    this.appointment,
+    required this.appointmentKey,
+  });
 
   @override
   State<TestAppointmentAdd> createState() => _TestAppointmentAddState();
@@ -21,9 +30,24 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
   final _formKey = GlobalKey<FormState>();
   final _testNameController = TextEditingController();
   final _laboratoryNameController = TextEditingController();
+
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
   List<String> _selectedImages = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ EDIT MODE PREFILL
+    if (widget.appointment != null) {
+      _testNameController.text = widget.appointment!.testName;
+      _laboratoryNameController.text = widget.appointment!.laboratoryName;
+      _selectedDate = widget.appointment!.date;
+      _selectedTime = widget.appointment!.time;
+      _selectedImages = List<String>.from(widget.appointment!.images);
+    }
+  }
 
   @override
   void dispose() {
@@ -36,9 +60,10 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime.now(), // Restrict to today and future dates
+      firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
+
     if (pickedDate != null && pickedDate != _selectedDate) {
       setState(() {
         _selectedDate = pickedDate;
@@ -51,6 +76,7 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
       context: context,
       initialTime: _selectedTime,
     );
+
     if (pickedTime != null && pickedTime != _selectedTime) {
       setState(() {
         _selectedTime = pickedTime;
@@ -63,16 +89,18 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Choose an option'),
+          title: const Text('Choose an option'),
           content: SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
                 GestureDetector(
-                  child: Text('Camera'),
+                  child: const Text('Camera'),
                   onTap: () async {
                     Navigator.pop(context);
+
                     final pickedFile = await ImagePicker()
                         .pickImage(source: ImageSource.camera);
+
                     if (pickedFile != null) {
                       setState(() {
                         _selectedImages.add(pickedFile.path);
@@ -80,16 +108,19 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
                     }
                   },
                 ),
-                Padding(padding: EdgeInsets.all(8.0)),
+                const SizedBox(height: 12),
                 GestureDetector(
-                  child: Text('Gallery'),
+                  child: const Text('Gallery'),
                   onTap: () async {
                     Navigator.pop(context);
+
                     final pickedFiles = await ImagePicker().pickMultiImage();
-                    if (pickedFiles != null) {
+
+                    if (pickedFiles.isNotEmpty) {
                       setState(() {
                         _selectedImages.addAll(
-                            pickedFiles.map((file) => file.path).toList());
+                          pickedFiles.map((file) => file.path).toList(),
+                        );
                       });
                     }
                   },
@@ -104,44 +135,54 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
 
   void _saveForm() async {
     if (_formKey.currentState!.validate()) {
-      final newAppointment = TestAppointment(
-        testName: _testNameController.text,
-        laboratoryName: _laboratoryNameController.text,
+      final updatedAppointment = TestAppointment(
+        testName: _testNameController.text.trim(),
+        laboratoryName: _laboratoryNameController.text.trim(),
         date: _selectedDate,
         time: _selectedTime,
         images: _selectedImages,
       );
 
-      final id = DateTime.now()
-          .millisecondsSinceEpoch
-          .toString(); // Generate a unique ID
-
-      final testHistoryEntry = TestHistory(
-        id: id, // Include the unique ID
-        testName: _testNameController.text,
-        testDate: _selectedDate,
-        results: _laboratoryNameController.text,
-      );
-
       final appointmentBox = Hive.box<TestAppointment>('testAppointmentsBox');
-      final historyBox = Hive.box<TestHistory>('testhistory');
 
-      await appointmentBox.add(newAppointment);
-      await historyBox.add(testHistoryEntry);
+      // ✅ EDIT MODE (update using KEY)
+      if (widget.appointmentKey != null) {
+        await appointmentBox.put(widget.appointmentKey, updatedAppointment);
+      } else {
+        // ✅ ADD MODE
+        await appointmentBox.add(updatedAppointment);
 
-      Navigator.pop(context); // Navigate back after saving
+        // ✅ Add to history only for NEW appointment
+        final id = DateTime.now().millisecondsSinceEpoch.toString();
+
+        final testHistoryEntry = TestHistory(
+          id: id,
+          testName: _testNameController.text.trim(),
+          testDate: _selectedDate,
+          results: _laboratoryNameController.text.trim(),
+        );
+
+        final historyBox = Hive.box<TestHistory>('testhistory');
+        await historyBox.add(testHistoryEntry);
+      }
+
+      Navigator.pop(context, updatedAppointment);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.appointmentKey != null;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 227, 226, 226),
         title: Center(
-          child: const Text(
-            'Add Test Appointment      ',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          child: Text(
+            isEdit
+                ? "Edit Test Appointment      "
+                : "Add Test Appointment      ",
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
       ),
@@ -158,7 +199,7 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
                   child: MedicineTextFieldForm(
                     controller: _testNameController,
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
+                      if (value == null || value.trim().isEmpty) {
                         return 'Please enter the test name';
                       }
                       return null;
@@ -166,19 +207,22 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
                   ),
                 ),
                 const SizedBox(height: 12),
+
                 CustomStack(
                   title: 'Laboratory Name',
                   child: MedicineTextFieldForm(
                     controller: _laboratoryNameController,
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
+                      if (value == null || value.trim().isEmpty) {
                         return 'Please enter the laboratory name';
                       }
                       return null;
                     },
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 10),
+
+                // ✅ DATE
                 Row(
                   children: [
                     const Text('Select Date: '),
@@ -187,12 +231,13 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
                       onPressed: _pickDate,
                       child: Text(
                         DateFormat('yyyy-MM-dd').format(_selectedDate),
-                        style: TextStyle(color: Colors.green),
+                        style: const TextStyle(color: Colors.green),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+
+                // ✅ TIME
                 Row(
                   children: [
                     const Text('Select Time: '),
@@ -201,30 +246,88 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
                       onPressed: _pickTime,
                       child: Text(
                         _selectedTime.format(context),
-                        style: TextStyle(color: Colors.green),
+                        style: const TextStyle(color: Colors.green),
                       ),
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 12),
+
+                // ✅ IMAGES SECTION
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Add Description Images: '),
+                    const Text('Images: '),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _selectedImages.map((imagePath) {
-                          return Image.file(
-                            File(imagePath),
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.cover,
+                        children:
+                            List.generate(_selectedImages.length, (index) {
+                          final imagePath = _selectedImages[index];
+
+                          return Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.file(
+                                  File(imagePath),
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(10),
+                                        color: Colors.grey.shade200,
+                                      ),
+                                      child: const Icon(Icons.broken_image),
+                                    );
+                                  },
+                                ),
+                              ),
+
+                              // ❌ Remove Single Image Button
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedImages.removeAt(index);
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.red,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           );
-                        }).toList(),
+                        }),
                       ),
                     ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                // ✅ IMAGE BUTTONS
+                Row(
+                  children: [
                     TextButton(
                       onPressed: _pickImages,
                       child: const Text(
@@ -232,17 +335,32 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
                         style: TextStyle(color: Colors.green),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedImages.clear();
+                        });
+                      },
+                      child: const Text(
+                        "Clear",
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
                   ],
                 ),
+
                 const SizedBox(height: 12),
+
+                // ✅ SAVE BUTTON
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: greencolor),
                   onPressed: _saveForm,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10.0),
                     child: Text(
-                      'SAVE',
-                      style: TextStyle(
+                      isEdit ? 'UPDATE' : 'SAVE',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

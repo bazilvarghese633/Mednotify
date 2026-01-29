@@ -31,9 +31,9 @@ class MedicineDb implements MedicineDbFunctions {
   }
 
   @override
-  Future<void> updateMedicine(Medicine updated) {
-    // TODO: implement updateMedicine
-    throw UnimplementedError();
+  Future<void> updateMedicine(Medicine updated) async {
+    final addMedDb = await Hive.openBox<Medicine>(addMed_db);
+    await addMedDb.put(updated.id, updated); // Replace existing record
   }
 
   @override

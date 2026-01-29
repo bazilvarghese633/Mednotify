@@ -14,7 +14,8 @@ import 'package:intl/intl.dart';
 import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 
 class AddMedicine extends StatefulWidget {
-  const AddMedicine({Key? key}) : super(key: key);
+  final Medicine? medicine;
+  const AddMedicine({Key? key, this.medicine}) : super(key: key);
 
   @override
   State<AddMedicine> createState() => _AddMedicineState();
@@ -70,6 +71,40 @@ class _AddMedicineState extends State<AddMedicine> {
   @override
   void initState() {
     super.initState();
+
+    if (widget.medicine != null) {
+      final med = widget.medicine!;
+      _medicationNameController.text = med.medicineName;
+      _selectedUnit = med.medicineUnit;
+      _frequency = med.frequency;
+      _showWeekDaySelection = _frequency == 'X Day a Week';
+      _selectedDays = med.selectedDay != null
+          ? med.selectedDay!.replaceAll('[', '').replaceAll(']', '').split(',')
+          : [];
+      _selectedDate = med.selectedDate != null && med.selectedDate!.isNotEmpty
+          ? DateFormat('yyyy-MM-dd').parse(med.selectedDate!)
+          : null;
+      _startedDate = med.startdate.isNotEmpty
+          ? DateFormat('yyyy-MM-dd').parse(med.startdate)
+          : null;
+      _endedDate = med.enddate.isNotEmpty
+          ? DateFormat('yyyy-MM-dd').parse(med.enddate)
+          : null;
+      _selectedStock = int.tryParse(med.currentstock) ?? 1;
+      _selectedDe = int.tryParse(med.destock) ?? 1;
+
+      _medications = [
+        {
+          'when': med.whenm,
+          'dosage': int.tryParse(med.dosage) ?? 1,
+        }
+      ];
+
+      _notifications = med.notifications.split(', ').map((timeStr) {
+        final dt = DateFormat.jm().parse(timeStr);
+        return TimeOfDay(hour: dt.hour, minute: dt.minute);
+      }).toList();
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -426,39 +461,34 @@ class _AddMedicineState extends State<AddMedicine> {
         ),
         MedicationSaveButton(
           onPressed: () async {
-            List<Future<void>> saveFutures = [];
+            final medToSave = Medicine(
+              id: widget.medicine?.id ??
+                  DateTime.now().microsecondsSinceEpoch.toString(),
+              medicineName: _medicationNameController.text,
+              medicineUnit: _selectedUnit,
+              frequency: _frequency,
+              selectedDay: _selectedDays.toString(),
+              selectedDate: _selectedDate != null
+                  ? dateFormat.format(_selectedDate!)
+                  : '',
+              whenm: _medications.first['when'].toString(),
+              dosage: _medications.first['dosage'].toString(),
+              notifications:
+                  _notifications.map((time) => _formatTime(time!)).join(', '),
+              startdate:
+                  _startedDate != null ? dateFormat.format(_startedDate!) : '',
+              enddate: _endedDate != null ? dateFormat.format(_endedDate!) : '',
+              currentstock: _selectedStock.toString(),
+              destock: _selectedDe.toString(),
+            );
 
-            for (int i = 0; i < _medications.length; i++) {
-              if (_medications[i]['when'] != null &&
-                  _medications[i]['dosage'] != null) {
-                var values = Medicine(
-                  id: DateTime.now().microsecondsSinceEpoch.toString(),
-                  medicineName: _medicationNameController.text,
-                  medicineUnit: _selectedUnit,
-                  frequency: _frequency,
-                  selectedDay: _selectedDays.toString(),
-                  selectedDate: _selectedDate != null
-                      ? dateFormat.format(_selectedDate!)
-                      : '',
-                  whenm: _medications[i]['when'].toString(),
-                  dosage: _medications[i]['dosage'].toString(),
-                  notifications: _notifications
-                      .map((time) => _formatTime(time!))
-                      .join(', '),
-                  startdate: _startedDate != null
-                      ? dateFormat.format(_startedDate!)
-                      : '',
-                  enddate:
-                      _endedDate != null ? dateFormat.format(_endedDate!) : '',
-                  currentstock: _selectedStock.toString(),
-                  destock: _selectedDe.toString(),
-                );
-
-                saveFutures.add(med.addMedicienDetails(values));
-              }
+            if (widget.medicine != null) {
+              // Edit mode
+              await med.updateMedicine(medToSave);
+            } else {
+              // Add new
+              await med.addMedicienDetails(medToSave);
             }
-
-            await Future.wait(saveFutures);
 
             Navigator.pop(context);
           },
