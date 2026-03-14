@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:medicine_try1/model/appointment_model.dart';
 import 'package:medicine_try1/model/dochistory.dart';
+import 'package:medicine_try1/notification_helper/doc_notification_helper.dart';
 import 'package:medicine_try1/widgets/docaddwidgets/button.dart';
 import 'package:medicine_try1/widgets/docaddwidgets/doc_add.dart';
 import 'package:medicine_try1/widgets/title_position.dart';
@@ -65,6 +66,11 @@ class _AppointmentAddState extends State<AppointmentAdd> {
       }
 
       widget.onSave(newAppointment);
+
+      // Schedule notification, but don't block UI
+      scheduleDoctorAppointmentNotification(newAppointment);
+
+      // Go back immediately
       Navigator.of(context).pop(newAppointment);
     }
   }

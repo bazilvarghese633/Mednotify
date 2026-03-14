@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 // ignore: unnecessary_import
 import 'package:flutter/widgets.dart';
 import 'package:medicine_try1/model/medicine_model.dart';
+import 'package:medicine_try1/notification_helper/medicine_notification_helper.dart';
 import 'package:medicine_try1/screens/hive_db_functions/medicine_db.dart';
 import 'package:medicine_try1/ui_colors/green.dart';
 import 'package:medicine_try1/widgets/coloum_custom.dart';
@@ -202,8 +203,7 @@ class _AddMedicineState extends State<AddMedicine> {
 
   void _addNotifications() {
     setState(() {
-      _notifications.add(_selectedTime);
-      _selectedTime = null;
+      _notifications.add(TimeOfDay.now()); // ✅ add default time
     });
   }
 
@@ -473,22 +473,34 @@ class _AddMedicineState extends State<AddMedicine> {
                   : '',
               whenm: _medications.first['when'].toString(),
               dosage: _medications.first['dosage'].toString(),
-              notifications:
-                  _notifications.map((time) => _formatTime(time!)).join(', '),
+
+              // ✅ SAFE FIX (no null crash)
+              notifications: _notifications
+                  .where((t) => t != null)
+                  .map((t) => _formatTime(t!))
+                  .join(', '),
+
+              // ✅ IMPORTANT: Save ISO for easy parsing
               startdate:
-                  _startedDate != null ? dateFormat.format(_startedDate!) : '',
-              enddate: _endedDate != null ? dateFormat.format(_endedDate!) : '',
+                  _startedDate != null ? _startedDate!.toIso8601String() : '',
+              enddate: _endedDate != null ? _endedDate!.toIso8601String() : '',
+
               currentstock: _selectedStock.toString(),
               destock: _selectedDe.toString(),
             );
 
             if (widget.medicine != null) {
-              // Edit mode
               await med.updateMedicine(medToSave);
             } else {
-              // Add new
               await med.addMedicienDetails(medToSave);
             }
+
+            // ✅ DEBUG CHECK
+            debugPrint(
+                "Saved medicine notifications: ${medToSave.notifications}");
+
+            // ✅ Schedule medicine notifications
+            await scheduleMedicineNotifications(medToSave);
 
             Navigator.pop(context);
           },

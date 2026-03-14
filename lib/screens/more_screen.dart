@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:icofont_flutter/icofont_flutter.dart';
+import 'package:medicine_try1/model/medicine_model.dart';
 import 'package:medicine_try1/screens/testappointment.dart';
 import 'package:medicine_try1/screens/medicine_stock.dart';
 import 'package:medicine_try1/screens/settings_screen.dart';
@@ -84,7 +85,7 @@ class MoreScreen extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    const NotificationDemoScreen(),
+                                    const MedicineStockScreen(),
                               ),
                             );
                           },

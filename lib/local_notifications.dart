@@ -18,7 +18,11 @@ class LocalNotificationService {
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const DarwinInitializationSettings iosSettings =
-        DarwinInitializationSettings();
+        DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
 
     const InitializationSettings settings = InitializationSettings(
       android: androidSettings,
@@ -28,7 +32,7 @@ class LocalNotificationService {
     await flutterLocalNotificationsPlugin.initialize(
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        debugPrint('Notification tapped: ${response.payload}');
+        _onNotificationSelected(response.payload);
       },
     );
   }
@@ -37,36 +41,37 @@ class LocalNotificationService {
   Future<void> showNotification(String title, String body) async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'instant_channel',
-      'Instant Notifications',
-      channelDescription: 'Instant notifications',
+      'channel_id',
+      'Reminders',
+      channelDescription: 'Reminder notifications',
       importance: Importance.max,
       priority: Priority.high,
     );
 
-    const NotificationDetails details =
+    const NotificationDetails notificationDetails =
         NotificationDetails(android: androidDetails);
 
-    await flutterLocalNotificationsPlugin.show(0, title, body, details);
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      title,
+      body,
+      notificationDetails,
+    );
   }
 
   // ⏰ Scheduled notification
-  Future<void> scheduleNotification({
-    required int id,
-    required String title,
-    required String body,
-    required tz.TZDateTime scheduledDate,
-  }) async {
+  Future<void> scheduleNotification(
+      int id, String title, String body, tz.TZDateTime scheduledDate) async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'scheduled_channel',
-      'Scheduled Notifications',
-      channelDescription: 'Scheduled reminders',
+      'scheduled_channel_id',
+      'Scheduled Reminders',
+      channelDescription: 'Scheduled reminders for medicine',
       importance: Importance.max,
       priority: Priority.high,
     );
 
-    const NotificationDetails details =
+    const NotificationDetails notificationDetails =
         NotificationDetails(android: androidDetails);
 
     await flutterLocalNotificationsPlugin.zonedSchedule(
@@ -74,14 +79,16 @@ class LocalNotificationService {
       title,
       body,
       scheduledDate,
-      details,
+      notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
+
+    debugPrint('✅ Scheduled notification "$title" at $scheduledDate (ID: $id)');
   }
 
-  Future<void> cancelNotification(int id) async {
-    await flutterLocalNotificationsPlugin.cancel(id);
+  void _onNotificationSelected(String? payload) {
+    debugPrint('🔔 Notification tapped: $payload');
   }
 }

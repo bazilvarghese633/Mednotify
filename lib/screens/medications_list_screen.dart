@@ -22,6 +22,21 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
     _medicineBox = Hive.box<Medicine>(addMed_db);
   }
 
+  // ✅ ADD THIS FUNCTION HERE (DATE FORMAT FIX)
+  String formatDate(String dateString) {
+    if (dateString.isEmpty) return '';
+
+    try {
+      final dt = DateTime.parse(dateString);
+
+      return "${dt.day.toString().padLeft(2, '0')}-"
+          "${dt.month.toString().padLeft(2, '0')}-"
+          "${dt.year}";
+    } catch (e) {
+      return dateString; // fallback if parsing fails
+    }
+  }
+
   Future<void> _deleteMedication(String medId) async {
     await _medicineBox.delete(medId);
   }
@@ -30,8 +45,8 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color.fromARGB(255, 227, 226, 226),
-        title: Center(
+        backgroundColor: const Color.fromARGB(255, 227, 226, 226),
+        title: const Center(
           child: Text(
             'Medications',
             style: TextStyle(fontWeight: FontWeight.bold),
@@ -42,7 +57,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
         valueListenable: _medicineBox.listenable(),
         builder: (context, Box<Medicine> box, _) {
           if (box.values.isEmpty) {
-            return Center(child: Text('No medications added yet.'));
+            return const Center(child: Text('No medications added yet.'));
           }
 
           return ListView.builder(
@@ -50,8 +65,9 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
             itemBuilder: (context, index) {
               Medicine? medicine = box.getAt(index);
               if (medicine == null) {
-                return SizedBox.shrink();
+                return const SizedBox.shrink();
               }
+
               return Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Container(
@@ -69,12 +85,14 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
                           Icons.medication_rounded,
                           color: greencolor,
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           medicine.medicineName,
                           style: TextStyle(
-                              fontSize: 20,
-                              color: greencolor,
-                              fontWeight: FontWeight.bold),
+                            fontSize: 20,
+                            color: greencolor,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -83,70 +101,83 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
                       children: [
                         Text(
                           'Frequency: ${medicine.frequency}',
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 15, fontWeight: FontWeight.bold),
                         ),
                         Text(
                           'Medicine Unit: ${medicine.medicineUnit}',
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 15, fontWeight: FontWeight.bold),
                         ),
                         Text(
                           'When : ${medicine.whenm}',
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 15, fontWeight: FontWeight.bold),
                         ),
                         Text(
                           'Dosage : ${medicine.dosage}',
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 15, fontWeight: FontWeight.bold),
                         ),
+
+                        // ✅ Weekly / Monthly
                         if (medicine.frequency == 'X Day a Week')
                           Text(
                             'Selected Day: ${medicine.selectedDay}',
-                            style: TextStyle(
+                            style: const TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.bold),
                           ),
+
                         if (medicine.frequency == 'X Day a Month')
                           Text(
                             'Selected Date: ${medicine.selectedDate}',
-                            style: TextStyle(
+                            style: const TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.bold),
                           ),
+
+                        // ✅ FIXED DATE FORMAT HERE
                         Text(
-                          'Start Date: ${medicine.startdate}',
-                          style: TextStyle(
+                          'Start Date: ${formatDate(medicine.startdate)}',
+                          style: const TextStyle(
                               fontSize: 15, fontWeight: FontWeight.bold),
                         ),
-                        Text('End Date : ${medicine.enddate}',
-                            style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.bold)),
-                        Text('Time : ${medicine.notifications}',
-                            style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.bold)),
-                        Text('Current Stock: ${medicine.currentstock}',
-                            style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.bold)),
+                        Text(
+                          'End Date : ${formatDate(medicine.enddate)}',
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+
+                        Text(
+                          'Time : ${medicine.notifications}',
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Current Stock: ${medicine.currentstock}',
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
                       ],
                     ),
                     trailing: Row(
-                      mainAxisSize: MainAxisSize.min, // Important
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
+                          icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () async {
-                            if (medicine.id != null)
+                            if (medicine.id != null) {
                               await _deleteMedication(medicine.id!);
+                            }
                           },
                         ),
                         IconButton(
-                          icon: Icon(Icons.edit, color: Colors.blue),
+                          icon: const Icon(Icons.edit, color: Colors.blue),
                           onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) =>
-                                      AddMedicine(medicine: medicine)),
+                                builder: (_) => AddMedicine(medicine: medicine),
+                              ),
                             );
                           },
                         ),
@@ -164,12 +195,12 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => AddMedicine()),
+            MaterialPageRoute(builder: (context) => const AddMedicine()),
           ).then((_) {
             setState(() {});
           });
         },
-        label: Row(
+        label: const Row(
           children: [
             Icon(Icons.add),
             SizedBox(width: 8),

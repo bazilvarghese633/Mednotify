@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:medicine_try1/model/test_history.dart';
 import 'package:medicine_try1/model/testappointment.dart';
+import 'package:medicine_try1/notification_helper/test_notification_helper.dart';
 import 'package:medicine_try1/ui_colors/green.dart';
 import 'package:medicine_try1/widgets/title_position.dart';
 
@@ -12,7 +13,6 @@ class TestAppointmentAdd extends StatefulWidget {
   final void Function(TestAppointment testAppointment) onSave;
   final TestAppointment? appointment;
 
-  // 🔥 KEY is optional (null = add, not null = edit)
   final dynamic appointmentKey;
 
   const TestAppointmentAdd({
@@ -165,6 +165,9 @@ class _TestAppointmentAddState extends State<TestAppointmentAdd> {
         final historyBox = Hive.box<TestHistory>('testhistory');
         await historyBox.add(testHistoryEntry);
       }
+
+      // ✅ Schedule notification for test appointment
+      await scheduleTestAppointmentNotification(updatedAppointment);
 
       Navigator.pop(context, updatedAppointment);
     }

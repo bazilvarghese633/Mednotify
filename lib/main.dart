@@ -4,11 +4,13 @@ import 'package:medicine_try1/local_notifications.dart';
 import 'package:medicine_try1/model/dochistory.dart';
 import 'package:medicine_try1/model/test_history.dart';
 import 'package:medicine_try1/model/testappointment.dart';
+import 'package:medicine_try1/permittion_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:medicine_try1/screens/welcome_screen.dart';
 import 'package:medicine_try1/model/medicine_model.dart';
 import 'package:medicine_try1/model/appointment_model.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,12 +31,11 @@ void main() async {
   await Hive.openBox<DoctorHistory>('dochistory');
   await Hive.openBox<TestHistory>('testhistory');
   await Hive.openBox<bool>('medicine-intake');
-
   tz.initializeTimeZones();
-
-  // Initialize notification service
+  tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+  tz.initializeTimeZones();
   await LocalNotificationService().init();
-
+  await requestNotificationPermission();
   runApp(const MyApp());
 }
 
